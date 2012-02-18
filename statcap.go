@@ -73,6 +73,7 @@ func gatherStats(client *memcached.Client, db *couch.Database,
 		for k, v := range proto {
 			allstats[k] = v
 		}
+		allstats["ts"] = time.Now().Format(time.RFC3339)
 
 		all := getNumericStats(client, "")
 		timings := getNumericStats(client, "timings")
