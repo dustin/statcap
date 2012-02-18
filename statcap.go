@@ -24,13 +24,26 @@ var protoFile *string = flag.String("proto", "",
 var additionalStats *string = flag.String("stats", "timings,kvtimings",
 	"stats to fetch beyond toplevel; comma separated")
 
-func store(db *couch.Database, m interface{}) {
+// That from which we get stats
+type fetcher interface {
+	StatsMap(which string) (map[string]string, error)
+	Close()
+}
+
+type storer interface {
+	Insert(m interface{}) (string, string, error)
+}
+
+func store(db storer, m interface{}) error {
 	_, _, err := db.Insert(m)
 	if err != nil {
 		log.Printf("Error inserting data:  %v", err)
 	}
+	return err
 }
 
+// Convert a map with string values to a map with mixed values,
+// converting strings to numbers where possible.
 func numerify(in map[string]string, err error) map[string]interface{} {
 	rv := map[string]interface{}{}
 	if err != nil {
@@ -50,7 +63,9 @@ func numerify(in map[string]string, err error) map[string]interface{} {
 	return rv
 }
 
-func getNumericStats(client *memcached.Client, which string) (rv map[string]interface{}) {
+// Get stats, converting as many values to numbers as possible.
+// ...unless there's no connection, in which case we'll return empty stats.
+func getNumericStats(client fetcher, which string) (rv map[string]interface{}) {
 	if client == nil {
 		rv = make(map[string]interface{})
 	} else {
@@ -68,28 +83,43 @@ func connect() *memcached.Client {
 	return client
 }
 
-func gatherStats(client *memcached.Client, db *couch.Database,
-	proto map[string]interface{}) {
+func fetchOnce(client fetcher,
+	proto map[string]interface{}) (fetcher, int, map[string]interface{}) {
 
-	additional := strings.Split(*additionalStats, ",")
+	allstats := map[string]interface{}{}
 
-	for {
-		allstats := map[string]interface{}{}
+	for k, v := range proto {
+		allstats[k] = v
+	}
+	allstats["ts"] = time.Now().Format(time.RFC3339)
 
-		for k, v := range proto {
-			allstats[k] = v
-		}
-		allstats["ts"] = time.Now().Format(time.RFC3339)
+	all := getNumericStats(client, "")
+	captured := len(all)
+	allstats["all"] = all
 
-		all := getNumericStats(client, "")
-		captured := len(all)
-		allstats["all"] = all
+	if *additionalStats != "" {
+		additional := strings.Split(*additionalStats, ",")
 
 		for _, name := range additional {
 			st := getNumericStats(client, name)
 			captured += len(st)
-			allstats[name] = st
+			if len(st) > 0 {
+				allstats[name] = st
+			}
 		}
+	}
+
+	return client, captured, allstats
+
+}
+
+func gatherStats(client fetcher, db *couch.Database,
+	proto map[string]interface{}) {
+
+	for {
+		var captured int
+		var allstats map[string]interface{}
+		client, captured, allstats = fetchOnce(client, proto)
 
 		if captured > 0 {
 			log.Printf("Captured %d stats", captured)
