@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"testing"
 )
 
@@ -173,15 +174,8 @@ func (ts *teststorer) Insert(m interface{}) (string, string, error) {
 	return "a", "b", ts.encoder.Encode(m)
 }
 
-type nullwriter bool
-
-func (nw *nullwriter) Write(p []byte) (n int, err error) {
-	return len(p), nil
-}
-
 func TestStoring(t *testing.T) {
-	nw := new(nullwriter)
-	storer := &teststorer{encoder: json.NewEncoder(nw)}
+	storer := &teststorer{encoder: json.NewEncoder(ioutil.Discard)}
 
 	proto := map[string]interface{}{
 		"version": 1,
