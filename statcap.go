@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"code.google.com/p/dsallings-couch-go"
@@ -20,6 +21,8 @@ var couchUrl *string = flag.String("couch", "http://localhost:5984/stats",
 	"memcached server to connect to")
 var protoFile *string = flag.String("proto", "",
 	"Proto document, into which timings stats will be added")
+var additionalStats *string = flag.String("stats", "timings,kvtimings",
+	"stats to fetch beyond toplevel; comma separated")
 
 func store(db *couch.Database, m interface{}) {
 	_, _, err := db.Insert(m)
@@ -67,6 +70,9 @@ func connect() *memcached.Client {
 
 func gatherStats(client *memcached.Client, db *couch.Database,
 	proto map[string]interface{}) {
+
+	additional := strings.Split(*additionalStats, ",")
+
 	for {
 		allstats := map[string]interface{}{}
 
@@ -76,14 +82,14 @@ func gatherStats(client *memcached.Client, db *couch.Database,
 		allstats["ts"] = time.Now().Format(time.RFC3339)
 
 		all := getNumericStats(client, "")
-		timings := getNumericStats(client, "timings")
-		kvtimings := getNumericStats(client, "kvtimings")
-
+		captured := len(all)
 		allstats["all"] = all
-		allstats["timings"] = timings
-		allstats["kvtimings"] = kvtimings
 
-		captured := len(all) + len(timings) + len(kvtimings)
+		for _, name := range additional {
+			st := getNumericStats(client, name)
+			captured += len(st)
+			allstats[name] = st
+		}
 
 		if captured > 0 {
 			log.Printf("Captured %d stats", captured)
