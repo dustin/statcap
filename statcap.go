@@ -118,7 +118,14 @@ func fetchOnce(client fetcher,
 func gatherStats(client fetcher, db storer,
 	proto map[string]interface{}) {
 
-	for {
+	running := true
+
+	sigch := make(chan os.Signal, 10)
+	signal.Notify(sigch, os.Interrupt)
+
+	delay := time.Duration(*sleepTime) * time.Second
+
+	for running {
 		var captured int
 		var allstats map[string]interface{}
 		client, captured, allstats = fetchOnce(client, proto)
@@ -134,7 +141,13 @@ func gatherStats(client fetcher, db storer,
 			client = connect()
 		}
 
-		time.Sleep(time.Duration(*sleepTime) * time.Second)
+		select {
+		case <-time.After(delay):
+			// Normal "sleep"
+		case sig := <-sigch:
+			running = false
+			log.Printf("Got %v, shutting down.", sig)
+		}
 	}
 }
 
@@ -169,15 +182,6 @@ func main() {
 		log.Fatalf("Error creating storer: %v", err)
 	}
 	defer out.Close()
-
-	ch := make(chan os.Signal)
-	signal.Notify(ch, os.Interrupt)
-	go func() {
-		sig := <-ch
-		log.Printf("Got %v", sig)
-		out.Close()
-		os.Exit(0)
-	}()
 
 	client := connect()
 	if client == nil {
