@@ -5,6 +5,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"time"
@@ -32,6 +33,7 @@ type fetcher interface {
 
 type storer interface {
 	Insert(m interface{}) (string, string, error)
+	Close() error
 }
 
 func store(db storer, m interface{}) error {
@@ -113,7 +115,7 @@ func fetchOnce(client fetcher,
 
 }
 
-func gatherStats(client fetcher, db *couch.Database,
+func gatherStats(client fetcher, db storer,
 	proto map[string]interface{}) {
 
 	for {
@@ -136,13 +138,46 @@ func gatherStats(client fetcher, db *couch.Database,
 	}
 }
 
+type closeableCouch struct {
+	db couch.Database
+}
+
+func (cc *closeableCouch) Close() error {
+	return nil
+}
+
+func (cc *closeableCouch) Insert(m interface{}) (string, string, error) {
+	return cc.db.Insert(m)
+}
+
+func getStorer() (storer, error) {
+	if strings.HasPrefix(*couchUrl, "http://") {
+		f, err := couch.Connect(*couchUrl)
+		if err != nil {
+			return nil, err
+		}
+		return &closeableCouch{f}, nil
+	}
+	return OpenFileStorer(*couchUrl)
+}
+
 func main() {
 	flag.Parse()
 
-	db, err := couch.Connect(*couchUrl)
+	out, err := getStorer()
 	if err != nil {
-		log.Fatalf("Error connecting to couch: %v", err)
+		log.Fatalf("Error creating storer: %v", err)
 	}
+	defer out.Close()
+
+	ch := make(chan os.Signal)
+	signal.Notify(ch, os.Interrupt)
+	go func() {
+		sig := <-ch
+		log.Printf("Got %v", sig)
+		out.Close()
+		os.Exit(0)
+	}()
 
 	client := connect()
 	if client == nil {
@@ -162,5 +197,5 @@ func main() {
 		}
 	}
 
-	gatherStats(client, &db, proto)
+	gatherStats(client, out, proto)
 }

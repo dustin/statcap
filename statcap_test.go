@@ -1,9 +1,11 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -174,6 +176,10 @@ func (ts *teststorer) Insert(m interface{}) (string, string, error) {
 	return "a", "b", ts.encoder.Encode(m)
 }
 
+func (ts *teststorer) Close() error {
+	return nil
+}
+
 func TestStoring(t *testing.T) {
 	storer := &teststorer{encoder: json.NewEncoder(ioutil.Discard)}
 
@@ -190,5 +196,38 @@ func TestStoring(t *testing.T) {
 	err := store(storer, r)
 	if err != nil {
 		t.Fatalf("Error storing value: %v", err)
+	}
+}
+
+func TestFileStorer(t *testing.T) {
+	filename := "testfile.gz"
+	defer os.Remove(filename)
+	func() {
+		fs, err := OpenFileStorer(filename)
+		if err != nil {
+			t.Fatalf("Error opening storer: %v", err)
+		}
+		defer fs.Close()
+
+		something := map[string]string{"a": "ayyy"}
+
+		fs.Insert(something)
+	}()
+
+	f, err := os.Open(filename)
+	if err != nil {
+		t.Fatalf("Error reopening the file: %v", err)
+	}
+	defer f.Close()
+	z, err := gzip.NewReader(f)
+	if err != nil {
+		t.Fatalf("Error opening z reader: %v", err)
+	}
+	d := json.NewDecoder(z)
+
+	m := map[string]string{}
+	err = d.Decode(&m)
+	if m["a"] != "ayyy" {
+		t.Fatalf("Didn't round trip through disk: %v", m)
 	}
 }
