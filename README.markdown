@@ -11,7 +11,7 @@ customer site reporting back home.
 # Usage
 
     Usage of ./statcap:
-      -couch="http://localhost:5984/stats": memcached server to connect to
+      -out="http://localhost:5984/stats": http://couch.db/path or a /file/path
       -proto="": Proto document, into which timings stats will be added
       -server="localhost:11211": memcached server to connect to
       -sleep=5: Sleep time between samples
@@ -20,12 +20,18 @@ customer site reporting back home.
 Most of the usage should be obvious, but I'll add even more
 description here so people know what's up.
 
-## Couch
+## Out
 
-Which CouchDB to talk to.  This supports basic auth, so you can do
-something like this:
+Where to send the output.  This can be a URL to a CouchDB, or a file
+path where a stream of gzipped JSON docs will be written.
 
-    ./statscap -couch=http://myuser:mypassword@me.iriscouch.com/secretdb
+CouchDB supports basic auth, so you can do something like this:
+
+    ./statscap -out=http://myuser:mypassword@me.iriscouch.com/secretdb
+
+or a plain file:
+
+    ./statscap -out=file.gz
 
 ## Proto
 

@@ -18,8 +18,8 @@ var sleepTime *uint = flag.Uint("sleep", 5,
 	"Sleep time between samples")
 var server *string = flag.String("server", "localhost:11211",
 	"memcached server to connect to")
-var couchUrl *string = flag.String("couch", "http://localhost:5984/stats",
-	"memcached server to connect to")
+var outPath *string = flag.String("out", "http://localhost:5984/stats",
+	"http://couch.db/path or a /file/path")
 var protoFile *string = flag.String("proto", "",
 	"Proto document, into which timings stats will be added")
 var additionalStats *string = flag.String("stats", "timings,kvtimings",
@@ -151,14 +151,14 @@ func (cc *closeableCouch) Insert(m interface{}) (string, string, error) {
 }
 
 func getStorer() (storer, error) {
-	if strings.HasPrefix(*couchUrl, "http://") {
-		f, err := couch.Connect(*couchUrl)
+	if strings.HasPrefix(*outPath, "http://") {
+		f, err := couch.Connect(*outPath)
 		if err != nil {
 			return nil, err
 		}
 		return &closeableCouch{f}, nil
 	}
-	return OpenFileStorer(*couchUrl)
+	return OpenFileStorer(*outPath)
 }
 
 func main() {
