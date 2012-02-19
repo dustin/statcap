@@ -3,7 +3,6 @@ package main
 import (
 	"compress/gzip"
 	"encoding/json"
-	"log"
 	"os"
 	"sync"
 )
@@ -19,8 +18,6 @@ func (ff *fileStorer) Insert(m interface{}) (string, string, error) {
 	ff.lock.Lock()
 	defer ff.lock.Unlock()
 
-	log.Printf("Writing some stuff.")
-
 	return "", "", ff.e.Encode(m)
 }
 
@@ -28,7 +25,6 @@ func (ff *fileStorer) Close() error {
 	ff.lock.Lock()
 	defer ff.lock.Unlock()
 	defer ff.file.Close()
-	log.Printf("Closing stuff down")
 	return ff.z.Close()
 }
 
