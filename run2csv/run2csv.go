@@ -15,7 +15,7 @@ var couchUrl *string = flag.String("couch", "http://localhost:5984/stats",
 
 type ResultRow struct {
 	Key   []interface{}
-	Value float64
+	Value interface{}
 }
 
 type Results struct {
