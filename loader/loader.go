@@ -15,11 +15,21 @@ import (
 
 var couchUrl *string = flag.String("couch", "http://localhost:5984/stats",
 	"Couch destination.")
+var protoFile *string = flag.String("proto", "",
+	"Proto document, into which timings stats will be added")
 
 var wg = sync.WaitGroup{}
+var proto map[string]interface{}
 
-func recordOne(db *couch.Database, m interface{}) {
+func recordOne(db *couch.Database, m map[string]interface{}) {
 	defer wg.Done()
+
+	// Let us first apply the proto
+	for k, v := range proto {
+		if _, present := m[k]; !present {
+			m[k] = v
+		}
+	}
 
 	_, _, err := db.Insert(m)
 	if err != nil {
@@ -27,13 +37,28 @@ func recordOne(db *couch.Database, m interface{}) {
 	}
 }
 
-func record(ch <-chan interface{}) {
+func record(ch <-chan map[string]interface{}) {
 	db, err := couch.Connect(*couchUrl)
 	if err != nil {
 		log.Fatalf("Error connecting to couchdb: %v", err)
 	}
 	for m := range ch {
 		recordOne(&db, m)
+	}
+}
+
+func loadProto() {
+	proto = make(map[string]interface{})
+	if *protoFile != "" {
+		f, err := os.Open(*protoFile)
+		if err != nil {
+			log.Fatalf("Error opening proto file:  %v", err)
+		}
+		defer f.Close()
+		err = json.NewDecoder(f).Decode(&proto)
+		if err != nil {
+			log.Fatalf("Error parsing proto: %v", err)
+		}
 	}
 }
 
@@ -57,7 +82,9 @@ func main() {
 	}
 	d := json.NewDecoder(zr)
 
-	ch := make(chan interface{}, 10)
+	loadProto()
+
+	ch := make(chan map[string]interface{}, 10)
 
 	for i := 0; i < 4; i++ {
 		go record(ch)
