@@ -34,7 +34,8 @@ func getResults(db couch.Database, run, which string) {
 	err := db.Query("_design/statdata/_view/"+which,
 		map[string]interface{}{
 			"reduce":    false,
-			"start_key": "[" + run + "]",
+			"start_key": []string{run},
+			"end_key":   []interface{}{run, map[string]interface{}{}},
 		},
 		&query_results)
 	maybefatal("Error querying couchdb", err)
