@@ -52,7 +52,7 @@ func getResults(db couch.Database, run, which string) {
 	c := csv.NewWriter(fout)
 
 	header := []string{}
-	for n := range query_results.Rows[0].Key {
+	for n := range query_results.Rows[0].Key[1:] {
 		header = append(header, fmt.Sprintf("k%d", n+1))
 	}
 	header = append(header, "value")
