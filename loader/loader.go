@@ -17,6 +17,8 @@ var couchUrl *string = flag.String("couch", "http://localhost:5984/stats",
 	"Couch destination.")
 var protoFile *string = flag.String("proto", "",
 	"Proto document, into which timings stats will be added")
+var forceProto *bool = flag.Bool("forceProto", false,
+	"If true, proto will override document-specified fields")
 
 var wg = sync.WaitGroup{}
 var proto map[string]interface{}
@@ -26,7 +28,7 @@ func recordOne(db *couch.Database, m map[string]interface{}) {
 
 	// Let us first apply the proto
 	for k, v := range proto {
-		if _, present := m[k]; !present {
+		if _, present := m[k]; !present || *forceProto {
 			m[k] = v
 		}
 	}
