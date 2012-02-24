@@ -70,17 +70,35 @@ func getResults(db couch.Database, run, which string) {
 	}
 }
 
+func listRuns(db *couch.Database) {
+	query_results := Results{}
+
+	err := db.Query("_design/statdata/_view/timings",
+		map[string]interface{}{
+			"group_level": 1,
+		},
+		&query_results)
+	maybefatal("Error querying couchdb", err)
+
+	fmt.Printf("Available Sets:\n")
+	for _, r := range query_results.Rows {
+		fmt.Printf(" - %v\n", r.Key[0])
+	}
+}
+
 func main() {
 	flag.Parse()
-	if flag.NArg() < 1 {
-		log.Printf("Need the name of the run to grab.")
-		flag.Usage()
-		os.Exit(1)
-	}
-	run := flag.Arg(0)
 
 	db, err := couch.Connect(*couchUrl)
 	maybefatal("Error connecting to couchdb", err)
+
+	if flag.NArg() < 1 {
+		log.Printf("Need the name of the run to grab.")
+		flag.Usage()
+		listRuns(&db)
+		os.Exit(1)
+	}
+	run := flag.Arg(0)
 
 	getResults(db, run, "kvtimings")
 	getResults(db, run, "timings")
