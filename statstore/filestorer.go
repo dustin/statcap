@@ -1,4 +1,4 @@
-package main
+package statstore
 
 import (
 	"compress/gzip"
@@ -28,7 +28,7 @@ func (ff *fileStorer) Close() error {
 	return ff.z.Close()
 }
 
-func OpenFileStorer(filepath string) (*fileStorer, error) {
+func openFileStorer(filepath string) (*fileStorer, error) {
 	f, err := os.Create(filepath)
 	if err != nil {
 		return nil, err

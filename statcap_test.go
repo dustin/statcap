@@ -1,11 +1,8 @@
 package main
 
 import (
-	"compress/gzip"
 	"encoding/json"
-	"errors"
 	"io/ioutil"
-	"os"
 	"testing"
 )
 
@@ -20,24 +17,6 @@ var amap = map[string]map[string]string{
 	},
 }
 
-func TestNumerify(t *testing.T) {
-	m2 := numerify(amap[""], nil)
-	if _, ok := m2["stringkey"].(string); !ok {
-		t.Fatalf("Expected a string for stringkey, didn't get it")
-	}
-	if _, ok := m2["intkey"].(float64); !ok {
-		t.Fatalf("Expected a float64 for intkey, didn't get it")
-	}
-}
-
-func TestNumerifyWithError(t *testing.T) {
-	e := errors.New("crap")
-	m2 := numerify(nil, e)
-	if len(m2) != 0 {
-		t.Fatalf("Expected empty map, got: %v", m2)
-	}
-}
-
 type testfetcher map[string]map[string]string
 
 func (tf testfetcher) StatsMap(which string) (map[string]string, error) {
@@ -45,6 +24,37 @@ func (tf testfetcher) StatsMap(which string) (map[string]string, error) {
 }
 
 func (tf testfetcher) Close() {
+}
+
+type teststorer struct {
+	encoder *json.Encoder
+}
+
+func (ts *teststorer) Insert(m interface{}) (string, string, error) {
+	return "a", "b", ts.encoder.Encode(m)
+}
+
+func (ts *teststorer) Close() error {
+	return nil
+}
+
+func TestStoring(t *testing.T) {
+	storer := &teststorer{encoder: json.NewEncoder(ioutil.Discard)}
+
+	proto := map[string]interface{}{
+		"version": 1,
+		"name":    "bob",
+	}
+	tf := testfetcher(amap)
+
+	*additionalStats = "other,missing"
+
+	_, _, r := fetchOnce(tf, proto)
+
+	err := store(storer, r)
+	if err != nil {
+		t.Fatalf("Error storing value: %v", err)
+	}
 }
 
 func TestGetNumericStatsNil(t *testing.T) {
@@ -165,69 +175,5 @@ func TestFetchOnceWithTwoAltOneMissing(t *testing.T) {
 
 	if other["otherkey"] != "otherval" || other["othernum"] != float64(8184) {
 		t.Fatalf("Got unexpected results: %v", other)
-	}
-}
-
-type teststorer struct {
-	encoder *json.Encoder
-}
-
-func (ts *teststorer) Insert(m interface{}) (string, string, error) {
-	return "a", "b", ts.encoder.Encode(m)
-}
-
-func (ts *teststorer) Close() error {
-	return nil
-}
-
-func TestStoring(t *testing.T) {
-	storer := &teststorer{encoder: json.NewEncoder(ioutil.Discard)}
-
-	proto := map[string]interface{}{
-		"version": 1,
-		"name":    "bob",
-	}
-	tf := testfetcher(amap)
-
-	*additionalStats = "other,missing"
-
-	_, _, r := fetchOnce(tf, proto)
-
-	err := store(storer, r)
-	if err != nil {
-		t.Fatalf("Error storing value: %v", err)
-	}
-}
-
-func TestFileStorer(t *testing.T) {
-	filename := "testfile.gz"
-	defer os.Remove(filename)
-	func() {
-		fs, err := OpenFileStorer(filename)
-		if err != nil {
-			t.Fatalf("Error opening storer: %v", err)
-		}
-		defer fs.Close()
-
-		something := map[string]string{"a": "ayyy"}
-
-		fs.Insert(something)
-	}()
-
-	f, err := os.Open(filename)
-	if err != nil {
-		t.Fatalf("Error reopening the file: %v", err)
-	}
-	defer f.Close()
-	z, err := gzip.NewReader(f)
-	if err != nil {
-		t.Fatalf("Error opening z reader: %v", err)
-	}
-	d := json.NewDecoder(z)
-
-	m := map[string]string{}
-	err = d.Decode(&m)
-	if m["a"] != "ayyy" {
-		t.Fatalf("Didn't round trip through disk: %v", m)
 	}
 }

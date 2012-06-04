@@ -6,12 +6,13 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"time"
 
-	"code.google.com/p/dsallings-couch-go"
 	"github.com/dustin/gomemcached/client"
+
+	"github.com/dustin/statcap/mapconv"
+	"github.com/dustin/statcap/statstore"
 )
 
 var sleepTime *uint = flag.Uint("sleep", 5,
@@ -31,38 +32,12 @@ type fetcher interface {
 	Close()
 }
 
-type storer interface {
-	Insert(m interface{}) (string, string, error)
-	Close() error
-}
-
-func store(db storer, m interface{}) error {
+func store(db statstore.Storer, m interface{}) error {
 	_, _, err := db.Insert(m)
 	if err != nil {
 		log.Printf("Error inserting data:  %v", err)
 	}
 	return err
-}
-
-// Convert a map with string values to a map with mixed values,
-// converting strings to numbers where possible.
-func numerify(in map[string]string, err error) map[string]interface{} {
-	rv := map[string]interface{}{}
-	if err != nil {
-		log.Printf("Error getting stats: %v", err)
-		return rv
-	}
-
-	for k, v := range in {
-		f, err := strconv.ParseFloat(v, 64)
-		if err == nil {
-			rv[k] = f
-		} else {
-			rv[k] = v
-		}
-	}
-
-	return rv
 }
 
 // Get stats, converting as many values to numbers as possible.
@@ -71,7 +46,7 @@ func getNumericStats(client fetcher, which string) (rv map[string]interface{}) {
 	if client == nil {
 		rv = make(map[string]interface{})
 	} else {
-		rv = numerify(client.StatsMap(which))
+		rv = mapconv.Numerify(client.StatsMap(which))
 	}
 	return
 }
@@ -115,7 +90,7 @@ func fetchOnce(client fetcher,
 
 }
 
-func gatherStats(client fetcher, db storer,
+func gatherStats(client fetcher, db statstore.Storer,
 	proto map[string]interface{}) {
 
 	running := true
@@ -151,33 +126,10 @@ func gatherStats(client fetcher, db storer,
 	}
 }
 
-type closeableCouch struct {
-	db couch.Database
-}
-
-func (cc *closeableCouch) Close() error {
-	return nil
-}
-
-func (cc *closeableCouch) Insert(m interface{}) (string, string, error) {
-	return cc.db.Insert(m)
-}
-
-func getStorer() (storer, error) {
-	if strings.HasPrefix(*outPath, "http://") {
-		f, err := couch.Connect(*outPath)
-		if err != nil {
-			return nil, err
-		}
-		return &closeableCouch{f}, nil
-	}
-	return OpenFileStorer(*outPath)
-}
-
 func main() {
 	flag.Parse()
 
-	out, err := getStorer()
+	out, err := statstore.GetStorer(*outPath)
 	if err != nil {
 		log.Fatalf("Error creating storer: %v", err)
 	}
