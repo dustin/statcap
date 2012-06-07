@@ -20,7 +20,7 @@ var sleepTime *uint = flag.Uint("sleep", 5,
 var server *string = flag.String("server", "http://localhost:8091/",
 	"couchbase cluster to connect to")
 var bucket *string = flag.String("bucket", "default", "couchbase bucket name")
-var outPath *string = flag.String("out", "http://localhost:5984/stats",
+var outPath *string = flag.String("out", "cap.json.gz",
 	"http://couch.db/path or a /file/path")
 var protoFile *string = flag.String("proto", "",
 	"Proto document, into which timings stats will be added")
@@ -149,6 +149,8 @@ func main() {
 			log.Fatalf("Error parsing proto: %v", err)
 		}
 	}
+
+	log.Printf("Capturing %v to %v", *server, *outPath)
 
 	gatherStats(out, proto)
 }
