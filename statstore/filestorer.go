@@ -18,8 +18,11 @@ func (ff *fileStorer) Insert(ob StoredItem) (string, string, error) {
 	ff.lock.Lock()
 	defer ff.lock.Unlock()
 
+	// Add a timestamp if there isn't one.
 	m := (*ob.rawI).(map[string]interface{})
-	m["ts"] = ob.Timestamp()
+	if _, ok := m["ts"]; !ok {
+		m["ts"] = ob.Timestamp()
+	}
 
 	return "", "", ff.e.Encode(m)
 }
