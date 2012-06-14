@@ -3,7 +3,9 @@ package statstore
 import (
 	"archive/zip"
 	"encoding/json"
+	"io"
 	"os"
+	"sort"
 	"sync"
 	"time"
 )
@@ -57,5 +59,67 @@ func openZipStorer(filepath string) (*zipStorer, error) {
 	return &zipStorer{
 		file: f,
 		z:    z,
+	}, nil
+}
+
+type fileList []*zip.File
+
+func (f fileList) Len() int {
+	return len(f)
+}
+
+func (f fileList) Less(i, j int) bool {
+	return f[i].ModTime().Before(f[j].ModTime())
+}
+
+func (f fileList) Swap(i, j int) {
+	f[j], f[i] = f[i], f[j]
+}
+
+type ZipReader struct {
+	z *zip.ReadCloser
+
+	files   fileList
+	current int
+}
+
+func (z *ZipReader) Close() error {
+	return z.z.Close()
+}
+
+func (z *ZipReader) Next() (interface{}, time.Time, error) {
+	if z.current >= len(z.files) {
+		return nil, time.Time{}, io.EOF
+	}
+
+	defer func() {
+		z.current++
+	}()
+
+	r, err := z.files[z.current].Open()
+	if err != nil {
+		return nil, time.Time{}, err
+	}
+	defer r.Close()
+
+	var rv interface{}
+	err = json.NewDecoder(r).Decode(&rv)
+
+	return rv, z.files[z.current].ModTime(), nil
+}
+
+func openZipReader(filepath string) (*ZipReader, error) {
+	f, err := zip.OpenReader(filepath)
+	if err != nil {
+		return nil, err
+	}
+
+	files := make(fileList, len(f.File))
+	copy(files, f.File)
+	sort.Sort(files)
+
+	return &ZipReader{
+		z:     f,
+		files: files,
 	}, nil
 }
