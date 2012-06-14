@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const timeFormat = "20060102T150405.json"
+const timeFormat = "20060102T150405.000.json"
 
 type zipStorer struct {
 	lock sync.Mutex
