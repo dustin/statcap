@@ -24,10 +24,15 @@ func (z *zipStorer) Insert(ob map[string]interface{}, ts time.Time) (string, str
 
 	filename := ts.Format(timeFormat)
 
+	tbytes, err := ts.GobEncode()
+	if err != nil {
+		return "", "", err
+	}
+
 	h := zip.FileHeader{
-		Name:    filename,
-		Method:  zip.Deflate,
-		Comment: ts.Format(time.RFC3339Nano),
+		Name:   filename,
+		Method: zip.Deflate,
+		Extra:  tbytes,
 	}
 	h.SetModTime(ts)
 
@@ -106,7 +111,8 @@ func (z *ZipReader) Next() (map[string]interface{}, time.Time, error) {
 	rv := map[string]interface{}{}
 	err = json.NewDecoder(r).Decode(&rv)
 
-	ts, err := time.Parse(time.RFC3339Nano, z.files[z.current].Comment)
+	var ts time.Time
+	err = ts.GobDecode(z.files[z.current].Extra)
 	if err != nil {
 		ts = z.files[z.current].ModTime()
 	}
