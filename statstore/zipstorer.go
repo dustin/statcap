@@ -25,8 +25,9 @@ func (z *zipStorer) Insert(ob map[string]interface{}, ts time.Time) (string, str
 	filename := ts.Format(timeFormat)
 
 	h := zip.FileHeader{
-		Name:   filename,
-		Method: zip.Deflate,
+		Name:    filename,
+		Method:  zip.Deflate,
+		Comment: ts.Format(time.RFC3339Nano),
 	}
 	h.SetModTime(ts)
 
@@ -69,7 +70,7 @@ func (f fileList) Len() int {
 }
 
 func (f fileList) Less(i, j int) bool {
-	return f[i].ModTime().Before(f[j].ModTime())
+	return f[i].Comment < f[j].Comment
 }
 
 func (f fileList) Swap(i, j int) {
@@ -105,7 +106,12 @@ func (z *ZipReader) Next() (map[string]interface{}, time.Time, error) {
 	rv := map[string]interface{}{}
 	err = json.NewDecoder(r).Decode(&rv)
 
-	return rv, z.files[z.current].ModTime(), nil
+	ts, err := time.Parse(time.RFC3339Nano, z.files[z.current].Comment)
+	if err != nil {
+		ts = z.files[z.current].ModTime()
+	}
+
+	return rv, ts, nil
 }
 
 func openZipReader(filepath string) (*ZipReader, error) {
