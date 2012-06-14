@@ -12,7 +12,7 @@ func TestFileStorer(t *testing.T) {
 	filename := "testfile.gz"
 	defer os.Remove(filename)
 	func() {
-		fs, err := openFileStorer(filename)
+		fs, err := GetStorer(filename)
 		if err != nil {
 			t.Fatalf("Error opening storer: %v", err)
 		}
@@ -46,7 +46,7 @@ func TestZipFileStorer(t *testing.T) {
 	var obname string
 	defer os.Remove(filename)
 	func() {
-		fs, err := openZipStorer(filename)
+		fs, err := GetStorer(filename)
 		if err != nil {
 			t.Fatalf("Error opening storer: %v", err)
 		}
