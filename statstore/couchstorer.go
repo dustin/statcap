@@ -1,6 +1,8 @@
 package statstore
 
 import (
+	"time"
+
 	"code.google.com/p/dsallings-couch-go"
 )
 
@@ -12,14 +14,14 @@ func (cc *couchStorer) Close() error {
 	return nil
 }
 
-func (cc *couchStorer) Insert(m interface{}) (string, string, error) {
+func (cc *couchStorer) Insert(m interface{}, ts time.Time) (string, string, error) {
 	return cc.db.Insert(m)
 }
 
 func openCouchStorer(path string) (Storer, error) {
-		f, err := couch.Connect(path)
-		if err != nil {
-			return nil, err
-		}
-		return &couchStorer{f}, nil
+	f, err := couch.Connect(path)
+	if err != nil {
+		return nil, err
+	}
+	return &couchStorer{f}, nil
 }

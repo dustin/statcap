@@ -6,10 +6,16 @@ import (
 	"encoding/json"
 	"os"
 	"testing"
+	"time"
 )
+
+const basetimeSecs = 1339646554
+
+var basetime time.Time = time.Unix(basetimeSecs, 0)
 
 func TestFileStorer(t *testing.T) {
 	filename := "testfile.gz"
+
 	defer os.Remove(filename)
 	func() {
 		fs, err := GetStorer(filename)
@@ -20,7 +26,7 @@ func TestFileStorer(t *testing.T) {
 
 		something := map[string]string{"a": "ayyy"}
 
-		fs.Insert(something)
+		fs.Insert(something, basetime)
 	}()
 
 	f, err := os.Open(filename)
@@ -54,7 +60,7 @@ func TestZipFileStorer(t *testing.T) {
 
 		something := map[string]string{"a": "ayyy"}
 
-		obname, _, err = fs.Insert(something)
+		obname, _, err = fs.Insert(something, basetime)
 		if err != nil {
 			t.Fatalf("Error storing item: %v", err)
 		}

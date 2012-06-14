@@ -2,11 +2,12 @@ package statstore
 
 import (
 	"strings"
+	"time"
 )
 
 // Interface for things that store things.
 type Storer interface {
-	Insert(m interface{}) (string, string, error)
+	Insert(m interface{}, ts time.Time) (string, string, error)
 	Close() error
 }
 

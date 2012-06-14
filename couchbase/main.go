@@ -33,8 +33,8 @@ type fetcher interface {
 	Close()
 }
 
-func store(db statstore.Storer, m interface{}) error {
-	_, _, err := db.Insert(m)
+func store(db statstore.Storer, ts time.Time, m interface{}) error {
+	_, _, err := db.Insert(m, ts)
 	if err != nil {
 		log.Printf("Error inserting data:  %v", err)
 	}
@@ -116,7 +116,7 @@ func gatherStats(db statstore.Storer, proto map[string]interface{}) {
 		if captured > 0 {
 			log.Printf("Captured %d stats", captured)
 
-			go store(db, &allstats)
+			go store(db, time.Now(), &allstats)
 		}
 
 		select {

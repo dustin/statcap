@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"testing"
+	"time"
 )
 
 var amap = map[string]map[string]string{
@@ -30,7 +31,7 @@ type teststorer struct {
 	encoder *json.Encoder
 }
 
-func (ts *teststorer) Insert(m interface{}) (string, string, error) {
+func (ts *teststorer) Insert(m interface{}, t time.Time) (string, string, error) {
 	return "a", "b", ts.encoder.Encode(m)
 }
 
@@ -51,7 +52,7 @@ func TestStoring(t *testing.T) {
 
 	_, _, r := fetchOnce(tf, proto)
 
-	err := store(storer, r)
+	err := store(storer, time.Now(), r)
 	if err != nil {
 		t.Fatalf("Error storing value: %v", err)
 	}

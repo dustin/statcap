@@ -8,24 +8,19 @@ import (
 	"time"
 )
 
+const timeFormat = "20060102T150405.json"
+
 type zipStorer struct {
 	lock sync.Mutex
 	file *os.File
 	z    *zip.Writer
 }
 
-func (z *zipStorer) Insert(ob interface{}) (string, string, error) {
+func (z *zipStorer) Insert(ob interface{}, ts time.Time) (string, string, error) {
 	z.lock.Lock()
 	defer z.lock.Unlock()
 
-	fmt := "20060102T150405.json"
-	ts := time.Now()
-	if m, ok := ob.(map[string]interface{}); ok {
-		if t, ok := m["ts"]; ok {
-			ts = t.(time.Time)
-		}
-	}
-	filename := ts.Format(fmt)
+	filename := ts.Format(timeFormat)
 
 	h := zip.FileHeader{
 		Name:   filename,

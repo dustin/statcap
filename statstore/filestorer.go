@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"sync"
+	"time"
 )
 
 type fileStorer struct {
@@ -14,7 +15,7 @@ type fileStorer struct {
 	e    *json.Encoder
 }
 
-func (ff *fileStorer) Insert(m interface{}) (string, string, error) {
+func (ff *fileStorer) Insert(m interface{}, ts time.Time) (string, string, error) {
 	ff.lock.Lock()
 	defer ff.lock.Unlock()
 
