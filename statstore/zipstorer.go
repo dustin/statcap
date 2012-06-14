@@ -18,7 +18,7 @@ type zipStorer struct {
 	z    *zip.Writer
 }
 
-func (z *zipStorer) Insert(ob interface{}, ts time.Time) (string, string, error) {
+func (z *zipStorer) Insert(ob map[string]interface{}, ts time.Time) (string, string, error) {
 	z.lock.Lock()
 	defer z.lock.Unlock()
 
@@ -87,7 +87,7 @@ func (z *ZipReader) Close() error {
 	return z.z.Close()
 }
 
-func (z *ZipReader) Next() (interface{}, time.Time, error) {
+func (z *ZipReader) Next() (map[string]interface{}, time.Time, error) {
 	if z.current >= len(z.files) {
 		return nil, time.Time{}, io.EOF
 	}
@@ -102,7 +102,7 @@ func (z *ZipReader) Next() (interface{}, time.Time, error) {
 	}
 	defer r.Close()
 
-	var rv interface{}
+	rv := map[string]interface{}{}
 	err = json.NewDecoder(r).Decode(&rv)
 
 	return rv, z.files[z.current].ModTime(), nil

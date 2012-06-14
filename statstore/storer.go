@@ -7,13 +7,13 @@ import (
 
 // Interface for things that store things.
 type Storer interface {
-	Insert(m interface{}, ts time.Time) (string, string, error)
+	Insert(m map[string]interface{}, ts time.Time) (string, string, error)
 	Close() error
 }
 
 // Interface for reading stored things.
 type Reader interface {
-	Next() (interface{}, time.Time, error)
+	Next() (map[string]interface{}, time.Time, error)
 	Close() error
 }
 

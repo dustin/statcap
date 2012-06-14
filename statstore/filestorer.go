@@ -15,13 +15,11 @@ type fileStorer struct {
 	e    *json.Encoder
 }
 
-func (ff *fileStorer) Insert(ob interface{}, ts time.Time) (string, string, error) {
+func (ff *fileStorer) Insert(ob map[string]interface{}, ts time.Time) (string, string, error) {
 	ff.lock.Lock()
 	defer ff.lock.Unlock()
 
-	if m, ok := ob.(map[string]interface{}); ok {
-		m["ts"] = ts
-	}
+	ob["ts"] = ts
 
 	return "", "", ff.e.Encode(ob)
 }
@@ -58,20 +56,18 @@ func (f *fileReader) Close() error {
 	return f.file.Close()
 }
 
-func (f *fileReader) Next() (rv interface{}, ts time.Time, err error) {
-	err = f.e.Decode(&rv)
+func (f *fileReader) Next() (m map[string]interface{}, ts time.Time, err error) {
+	err = f.e.Decode(&m)
 	if err != nil {
 		return
 	}
-	if m, ok := rv.(map[string]interface{}); ok {
-		switch i := m["ts"].(type) {
-		case time.Time:
-			ts = i
-		case string:
-			ts, _ = time.Parse(time.RFC3339, i)
-		case nil:
-			// something
-		}
+	switch i := m["ts"].(type) {
+	case time.Time:
+		ts = i
+	case string:
+		ts, _ = time.Parse(time.RFC3339, i)
+	case nil:
+		// something
 	}
 	return
 }

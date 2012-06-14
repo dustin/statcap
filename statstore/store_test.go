@@ -60,7 +60,7 @@ func TestZipFileStorer(t *testing.T) {
 		}
 		defer fs.Close()
 
-		something := map[string]string{"a": "ayyy"}
+		something := map[string]interface{}{"a": "ayyy"}
 
 		obname, _, err = fs.Insert(something, basetime)
 		if err != nil {
@@ -128,9 +128,8 @@ func verify(t *testing.T, obname, filename string) {
 		t.Fatalf("Expected ts %v, got %v", basetime, ts)
 	}
 
-	m := r.(map[string]interface{})
-	if m["a"] != "ayyy" {
-		t.Fatalf("Didn't round trip through disk: %v", m)
+	if r["a"] != "ayyy" {
+		t.Fatalf("Didn't round trip through disk: %v", r)
 	}
 
 	_, _, err = zr.Next()

@@ -31,7 +31,7 @@ type teststorer struct {
 	encoder *json.Encoder
 }
 
-func (ts *teststorer) Insert(m interface{}, t time.Time) (string, string, error) {
+func (ts *teststorer) Insert(m map[string]interface{}, t time.Time) (string, string, error) {
 	return "a", "b", ts.encoder.Encode(m)
 }
 
