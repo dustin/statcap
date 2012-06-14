@@ -62,7 +62,7 @@ func TestZipFileStorer(t *testing.T) {
 
 		something := map[string]interface{}{"a": "ayyy"}
 
-		obname, _, err = fs.Insert(something, basetime)
+		obname, _, err = fs.Insert(NewItem(something, basetime))
 		if err != nil {
 			t.Fatalf("Error storing item: %v", err)
 		}
@@ -105,7 +105,7 @@ func initData(t *testing.T, filename string) string {
 
 	something := map[string]interface{}{"a": "ayyy"}
 
-	obname, _, err := fs.Insert(something, basetime)
+	obname, _, err := fs.Insert(NewItem(something, basetime))
 	if err != nil {
 		t.Fatalf("Error storing item: %v", err)
 	}
@@ -120,19 +120,22 @@ func verify(t *testing.T, obname, filename string) {
 	}
 	defer zr.Close()
 
-	r, ts, err := zr.Next()
+	it, err := zr.Next()
 	if err != nil {
 		t.Fatalf("Error reading an item: %v", err)
 	}
-	if ts.Unix() != basetime.Unix() {
-		t.Fatalf("Expected ts %v, got %v", basetime, ts)
+	if it.Timestamp().Unix() != basetime.Unix() {
+		t.Fatalf("Expected ts %v from %v, got %v",
+			basetime, filename, it.Timestamp())
 	}
 
+	r := map[string]interface{}{}
+	it.UnmarshalInto(&r)
 	if r["a"] != "ayyy" {
 		t.Fatalf("Didn't round trip through disk: %v", r)
 	}
 
-	_, _, err = zr.Next()
+	_, err = zr.Next()
 	if err != io.EOF {
 		t.Fatalf("Expected EOF, got: %v", err)
 	}

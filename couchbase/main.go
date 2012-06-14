@@ -34,7 +34,7 @@ type fetcher interface {
 }
 
 func store(db statstore.Storer, ts time.Time, m map[string]interface{}) error {
-	_, _, err := db.Insert(m, ts)
+	_, _, err := db.Insert(statstore.NewItem(m, ts))
 	if err != nil {
 		log.Printf("Error inserting data:  %v", err)
 	}

@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/dustin/statcap/statstore"
 )
@@ -18,16 +17,11 @@ func maybefatal(err error) {
 	}
 }
 
-type entry struct {
-	m  map[string]interface{}
-	ts time.Time
-}
-
-func storer(w statstore.Storer, ch <-chan entry) {
+func storer(w statstore.Storer, ch <-chan statstore.StoredItem) {
 	defer wg.Done()
 
 	for e := range ch {
-		w.Insert(e.m, e.ts)
+		w.Insert(e)
 	}
 }
 
@@ -39,13 +33,13 @@ func main() {
 	maybefatal(err)
 	defer w.Close()
 
-	ch := make(chan entry, 100)
+	ch := make(chan statstore.StoredItem, 100)
 
 	wg.Add(1)
 	go storer(w, ch)
 
 	for {
-		m, ts, err := r.Next()
+		m, err := r.Next()
 		if err == io.EOF {
 			return
 		}
@@ -53,8 +47,8 @@ func main() {
 			log.Printf("Error reading an entry, stopping: %v", err)
 			return
 		}
-		log.Printf("Recording entry from %v", ts)
-		ch <- entry{m, ts}
+		log.Printf("Recording entry from %v", m.Timestamp())
+		ch <- m
 	}
 	close(ch)
 

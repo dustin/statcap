@@ -18,10 +18,11 @@ type zipStorer struct {
 	z    *zip.Writer
 }
 
-func (z *zipStorer) Insert(ob map[string]interface{}, ts time.Time) (string, string, error) {
+func (z *zipStorer) Insert(ob StoredItem) (string, string, error) {
 	z.lock.Lock()
 	defer z.lock.Unlock()
 
+	ts := ob.Timestamp()
 	filename := ts.Format(timeFormat)
 
 	h := zip.FileHeader{
@@ -35,7 +36,6 @@ func (z *zipStorer) Insert(ob map[string]interface{}, ts time.Time) (string, str
 	if err != nil {
 		return "", "", err
 	}
-
 	err = json.NewEncoder(f).Encode(ob)
 	if err != nil {
 		return "", "", err
@@ -88,9 +88,11 @@ func (z *ZipReader) Close() error {
 	return z.z.Close()
 }
 
-func (z *ZipReader) Next() (map[string]interface{}, time.Time, error) {
+func (z *ZipReader) Next() (StoredItem, error) {
+	rv := StoredItem{}
+
 	if z.current >= len(z.files) {
-		return nil, time.Time{}, io.EOF
+		return rv, io.EOF
 	}
 
 	defer func() {
@@ -99,19 +101,21 @@ func (z *ZipReader) Next() (map[string]interface{}, time.Time, error) {
 
 	r, err := z.files[z.current].Open()
 	if err != nil {
-		return nil, time.Time{}, err
+		return rv, err
 	}
 	defer r.Close()
 
-	rv := map[string]interface{}{}
 	err = json.NewDecoder(r).Decode(&rv)
-
-	ts, err := time.Parse(time.RFC3339Nano, string(z.files[z.current].Extra))
 	if err != nil {
-		ts = z.files[z.current].ModTime()
+		return rv, err
 	}
 
-	return rv, ts, nil
+	ts, err := time.Parse(time.RFC3339Nano,
+		string(z.files[z.current].Extra))
+
+	rv.ts = &ts
+
+	return rv, err
 }
 
 func openZipReader(filepath string) (*ZipReader, error) {

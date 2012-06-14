@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"os"
 	"sync"
-	"time"
 )
 
 type fileStorer struct {
@@ -15,13 +14,14 @@ type fileStorer struct {
 	e    *json.Encoder
 }
 
-func (ff *fileStorer) Insert(ob map[string]interface{}, ts time.Time) (string, string, error) {
+func (ff *fileStorer) Insert(ob StoredItem) (string, string, error) {
 	ff.lock.Lock()
 	defer ff.lock.Unlock()
 
-	ob["ts"] = ts
+	m := (*ob.rawI).(map[string]interface{})
+	m["ts"] = ob.Timestamp()
 
-	return "", "", ff.e.Encode(ob)
+	return "", "", ff.e.Encode(m)
 }
 
 func (ff *fileStorer) Close() error {
@@ -56,19 +56,8 @@ func (f *fileReader) Close() error {
 	return f.file.Close()
 }
 
-func (f *fileReader) Next() (m map[string]interface{}, ts time.Time, err error) {
+func (f *fileReader) Next() (m StoredItem, err error) {
 	err = f.e.Decode(&m)
-	if err != nil {
-		return
-	}
-	switch i := m["ts"].(type) {
-	case time.Time:
-		ts = i
-	case string:
-		ts, _ = time.Parse(time.RFC3339, i)
-	case nil:
-		// something
-	}
 	return
 }
 

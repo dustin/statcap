@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"testing"
 	"time"
+
+	"github.com/dustin/statcap/statstore"
 )
 
 var amap = map[string]map[string]string{
@@ -31,8 +33,8 @@ type teststorer struct {
 	encoder *json.Encoder
 }
 
-func (ts *teststorer) Insert(m map[string]interface{}, t time.Time) (string, string, error) {
-	return "a", "b", ts.encoder.Encode(m)
+func (ts *teststorer) Insert(it statstore.StoredItem) (string, string, error) {
+	return "a", "b", ts.encoder.Encode(it)
 }
 
 func (ts *teststorer) Close() error {
