@@ -15,5 +15,8 @@ func GetStorer(path string) (Storer, error) {
 	if strings.HasPrefix(path, "http://") {
 		return openCouchStorer(path)
 	}
+	if strings.HasSuffix(path, ".zip") {
+		return openZipStorer(path)
+	}
 	return openFileStorer(path)
 }
