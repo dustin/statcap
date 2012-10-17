@@ -15,7 +15,7 @@ import (
 	"github.com/dustin/statcap/statstore"
 )
 
-var sleepTime *uint = flag.Uint("sleep", 5,
+var sleepTime = flag.Duration("sleep", 5*time.Second,
 	"Sleep time between samples")
 var server *string = flag.String("server", "localhost:11211",
 	"memcached server to connect to")
@@ -98,7 +98,7 @@ func gatherStats(client fetcher, db statstore.Storer,
 	sigch := make(chan os.Signal, 10)
 	signal.Notify(sigch, os.Interrupt)
 
-	delay := time.Duration(*sleepTime) * time.Second
+	ticker := time.NewTicker(*sleepTime)
 
 	for running {
 		var captured int
@@ -117,7 +117,7 @@ func gatherStats(client fetcher, db statstore.Storer,
 		}
 
 		select {
-		case <-time.After(delay):
+		case <-ticker.C:
 			// Normal "sleep"
 		case sig := <-sigch:
 			running = false
