@@ -110,7 +110,7 @@ func (z *ZipReader) Next() (StoredItem, error) {
 		return rv, err
 	}
 
-	ts, err := time.Parse(time.RFC3339Nano,
+	ts, err := time.Parse(time.RFC3339,
 		string(z.files[z.current].Extra))
 
 	rv.ts = &ts
