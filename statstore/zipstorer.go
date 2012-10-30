@@ -2,6 +2,7 @@ package statstore
 
 import (
 	"archive/zip"
+	"encoding/binary"
 	"encoding/json"
 	"io"
 	"os"
@@ -11,6 +12,8 @@ import (
 )
 
 const timeFormat = "20060102T150405.000.json"
+
+const timeTag = uint16(0x23)
 
 type zipStorer struct {
 	lock sync.Mutex
@@ -25,10 +28,16 @@ func (z *zipStorer) Insert(ob StoredItem) (string, string, error) {
 	ts := ob.Timestamp()
 	filename := ts.Format(timeFormat)
 
+	tagts := []byte(ts.Format(time.RFC3339Nano))
+	tag := []byte{0, 0, 0, 0}
+
+	binary.LittleEndian.PutUint16(tag[0:2], timeTag)
+	binary.LittleEndian.PutUint16(tag[2:4], uint16(len(tagts)))
+
 	h := zip.FileHeader{
 		Name:   filename,
 		Method: zip.Deflate,
-		Extra:  []byte(ts.Format(time.RFC3339Nano)),
+		Extra:  append(tag, tagts...),
 	}
 	h.SetModTime(ts)
 
@@ -110,10 +119,23 @@ func (z *ZipReader) Next() (StoredItem, error) {
 		return rv, err
 	}
 
-	ts, err := time.Parse(time.RFC3339,
-		string(z.files[z.current].Extra))
-
-	rv.ts = &ts
+	zf := z.files[z.current]
+	if len(zf.Extra) > 0 {
+		b := zf.Extra
+		for len(b) >= 4 {
+			tag := binary.LittleEndian.Uint16(b[:2])
+			b = b[2:]
+			size := binary.LittleEndian.Uint16(b[:2])
+			b = b[2:]
+			if tag == timeTag {
+				var ts time.Time
+				ts, err = time.Parse(time.RFC3339,
+					string(b[:size]))
+				rv.ts = &ts
+			}
+			b = b[size:]
+		}
+	}
 
 	return rv, err
 }
